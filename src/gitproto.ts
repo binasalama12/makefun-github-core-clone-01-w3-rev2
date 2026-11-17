@@ -112,9 +112,14 @@ function lsRefs(repo: Repo, args: LsRefsArgs): Buffer {
   const headOid = repo.refs.get(headRef);
   const lines: string[] = [];
   const matches = (name: string): boolean => args.prefixes.length === 0 || args.prefixes.some((prefix) => name.startsWith(prefix));
-  if (args.unborn && !headOid) lines.push(`unborn HEAD symref-target:${headRef}`);
-  else if (headOid) lines.push(`${headOid} HEAD symref-target:${headRef}`);
-  else lines.push(`${ZERO_OID} HEAD symref-target:${headRef}`);
+  // HEAD is listed only when the caller's prefixes admit it: a ref-prefix
+  // query for refs/heads/ must not see a HEAD line in the raw answer.
+  const headAdmitted = args.prefixes.length === 0 || args.prefixes.some((prefix) => 'HEAD'.startsWith(prefix) || prefix.startsWith('HEAD'));
+  if (headAdmitted) {
+    if (args.unborn && !headOid) lines.push(`unborn HEAD symref-target:${headRef}`);
+    else if (headOid) lines.push(`${headOid} HEAD symref-target:${headRef}`);
+    else lines.push(`${ZERO_OID} HEAD symref-target:${headRef}`);
+  }
   for (const [ref, oid] of sortedRefs(repo)) {
     if (!matches(ref)) continue;
     let line = `${oid} ${ref}`;
@@ -298,6 +303,12 @@ function uploadPackV2(repo: Repo, body: Buffer): Buffer {
     args.push(packet.payload.toString('utf8').trim());
   }
   if (command === 'command=ls-refs') {
+    // ls-refs arguments ride in the section after the delim, like fetch's.
+    while (index < packets.length) {
+      const packet = packets[index++];
+      if (packet.kind === 'flush') break;
+      if (packet.kind === 'data') args.push(packet.payload.toString('utf8').trim());
+    }
     const parsed: LsRefsArgs = { prefixes: [], peel: false, symrefs: false, unborn: false };
     for (const arg of args) {
       if (arg.startsWith('ref-prefix ')) parsed.prefixes.push(arg.slice('ref-prefix '.length));

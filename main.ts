@@ -6,4 +6,9 @@
 
 import { serve } from './src/server.ts';
 
+// A suite that stops waiting should never leave a zombie forge behind.
+for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+  process.on(signal, () => process.exit(0));
+}
+
 await serve();
