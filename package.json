@@ -1,0 +1,1 @@
+{"description":"Hazel Forge — a standalone GitHub-compatible git forge (git smart HTTP, REST v3, GraphQL, MCP) in one Node process.","license":"MIT","main":"main.ts","name":"hazel-forge","private":true,"type":"module","version":"1.0.0"}
